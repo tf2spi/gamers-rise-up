@@ -6,12 +6,15 @@ as a game.
 
 ## Findings
 
-* Game has a string containing a URL to a discord
-  cdn that contains the file "UnityGameManager.dll"
+* I2CPP Dumper is initially used to get strings and symbols
+  from the Unity project.
 
-* The UnityGameManager.dll is itself an SFX that
+* Game has a string containing a URL to a discord
+  cdn that contains the file "UnityGameManager.exe"
+
+* The UnityGameManager.exe is itself an SFX that
   contains an Electron app that will probably extract itself.
 
 * This electron app itself has a lot of obfuscated Javascript
   that probably does all the bad malware things.
-  
+
