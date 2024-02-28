@@ -4,17 +4,14 @@ This is an alternate specification of opus to complement `RFC 6716 <https://data
 
 The purpose of doing this is to explain the opus codec in a way
 more suited to implementers rather than solely as a mathematical
-specification. This is useful for game devs like  `Sean T. Barnett <https://nothings.org/stb/stb_opus.html>`_
-and others to reimplement opus in a way that suits them.
+specification. 
 
-Speaking of which, if there is a difference between the implementation
-provided and this specification, the spec takes preference and should
-be updated when the opus implementation contradicts it.
-
-Additionally, pseudocode and an alternate API is provided rather than
-the code from `libopus <https://github.com/xiph/opus.git>`_ or RFC 6716
-so that I don't accidentally put implementers in a position of copyright
-infringement if they copy any part of this specification.
+There should be little (pseudo)code provided in this specification
+as a skeptical measure to avoid copyright infringement of libopus.
+Any references to libopus in this document should also be in the prose
+of RFC 6716 which public domain authors are allowed to reference.
+This is useful for game devs like  `Sean T. Barnett <https://nothings.org/stb/stb_opus.html>`_
+and others to implement opus codecs without copyright infringement.
 
 Structure
 ^^^^^^^^^
@@ -51,8 +48,7 @@ two things to be known by the decoder.
 * The frequency distribution of the code points
 * The full range needed to decode the message
 
-The opus range decoder uses bytes as its code points.
-RFC 6716 and libopus also call code points "symbols".
+The opus range codec uses bytes as its code points.
 
 After this, the decoder can use an iterator
 to explore the range until it produces the message.
@@ -66,53 +62,74 @@ is derived from "rng" in RFC 6716 like below.
    iterator = high - difference
    range = [iterator, high)
 
-opus then uses several function to manipulate the iterator and range
-expressed in pseudo-code.
+"high" and "difference" will continue to be used
+since that corresponds most closely with RFC 6716.
+
+Mathematically, this isn't quite sound, but
+that doesn't matter for decoder implementations.
+
+For initialization and "renormalization", explained later,
+the range decoder will read a byte from the bitstream.
+If no bytes are provided then RFC 6716 specifies to
+use a zero byte instead. "renormBit" will refer to
+the bit stored for later use in renormalization.
+
+To initialize the decoder, a byte "input" is read from the
+bitstream, high is initialized to 128, difference is initialized
+to (127 - (input >> 1)), and the renormBit is initialized to (input & 1).
+
+Opus then uses another range [fqlow, fqhigh] and a data point
+"fqtime" in that range. fqhigh must always fit in a 16-bit
+unsigned integer. These can be derived from RFC 6716 like below.
 
 .. code-block:: text
 
-   void rangedec_initialize(rangedec *rd, u8 []bstream) {
-       rd.bitstream = bstream
-       rd.i = 0
-       rd.high = 128
-       u8 codepoint = rangedec_u8(rd)
-       rd.difference = rd.high - (codepoint >> 1) - 1
-       rd.renormal = codepoint & 1
-       rangedec_normalize(rd)
-   }
+   fqlow = fl[k]
+   fqtime = fh[k]
+   fqhigh = ft
+
+opus then always updates the range decoder
+based on some values of fqlow, fqtime, and fqhigh
+using the following algorithms
 
 .. code-block:: text
 
-   u8 rangedec_u8(rangedec *rd) {
-       return len(rd.bitstream) > rd.i ? rd.bitstream[rd.i++] : 0;
-   }
+   intermediate = (high / fqhigh) * (fqhigh - fqtime)
+   difference -= intermediate
+   if fqlow <= 0
+       high -= intermediate
+   else
+       high = (high / fqhigh) * (fqtime - fqlow)
+
+This can be derived from the description in RFC 6716.
+
+Note that there are many ways to optimize this update
+for certain values. Some are even described in RFC 6716.
+These are left up to the implementer.
+
+All updates to the range decoder must renormalize it.
+
+To renormalize the decoder, continue the below process until high > (1 << 23).
+
+Renormalization uses the renormalization bit and reads
+a byte "input" from the bitstream to derive a new codepoint.
+
+The new codepoint's MSB is the current renormBit,
+the new codepoint's remaining LSBs are the low
+7 bits of input, and the MSB of input becomes the
+new renormBit.
+
+Below is a summary of the above description
 
 .. code-block:: text
 
-   void rangedec_renormalize(rangedec *rd) {
-       if (rd.high <= 255) {
-           rd.high <<= 8
-           u8 input = rangedec_u8(rd)
-           u8 codepoint = rd.renormal | input << 1
-           rd.renormal = input & 1
-           rd.difference = rd.difference << 8 | codepoint
-       }
-   }
+   codepoint = ((renormBit << 7) | (input >> 1)) & 255
+   renormBit = (input >> 7) & 1
+
+After this, update the remaining decoder variables like below
 
 .. code-block:: text
 
-   u1 rangdec_log2(rangedec *rd, u5 scale) {
-       u32 newrange = rd.high >> scale 
-       bool success = (rd.difference < newrange)
-
-       if success
-           high = newrange
-       else
-           high -= newrange
-           difference -= newrange
-
-        rangedec_normalize(rd)
-        return success ? 1 : 0
-   }
-
+   high <<= 8
+   difference = (difference << 8) | (~codepoint & 255)
 
