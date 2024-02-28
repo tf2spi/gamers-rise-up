@@ -10,6 +10,7 @@ Welcome to Gamers Rise Up's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   files/index
 
 
 Indices and tables
