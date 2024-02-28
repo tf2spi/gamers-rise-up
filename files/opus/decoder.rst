@@ -1,30 +1,5 @@
-Opus
-####
-This is an alternate specification of opus to complement `RFC 6716 <https://datatracker.ietf.org/doc/html/rfc6716>`_.
-
-The purpose of doing this is to explain the opus codec in a way
-more suited to implementers rather than solely as a mathematical
-specification. 
-
-There should be little (pseudo)code provided in this specification
-as a skeptical measure to avoid copyright infringement of libopus.
-Any references to libopus in this document should also be in the prose
-of RFC 6716 which public domain authors are allowed to reference.
-This is useful for game devs like  `Sean T. Barnett <https://nothings.org/stb/stb_opus.html>`_
-and others to implement opus codecs without copyright infringement.
-
-Structure
-^^^^^^^^^
-
-opus does not have a specific file format. Instead, it is just a bitstream
-whose size is given by the packets that encapsulate it.
-
-For example, an opus rtp packet is just the header and the packet itself,
-so the length of the datagram implicitly determines the length of the opus
-bitstream.
-
 Decoder
-^^^^^^^
+#######
 
 These are the overall steps that the decoder must perform for an opus bitstream.
 

@@ -5,7 +5,7 @@ File Formats
 .. toctree::
    :maxdepth: 2
 
-   opus
+   opus/index
 
 Documentation for various file and data formats used in games
 
